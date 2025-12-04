@@ -1,0 +1,116 @@
+// src/components/LoginForm.tsx
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { loginSchema } from "@/utils/schema/login_schema";
+import type { LoginData } from "@/utils/schema/login_schema";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
+import { useLogin } from "@/features/auth/useLogin";
+
+
+
+export function LoginForm() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [err, setErr] = useState<string | null>(null);
+
+  // react-query mutation hook
+  const { mutateAsync, isPending } = useLogin();
+
+  const form = useForm<LoginData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/dashboard";
+console.log(from)
+  async function onSubmit(values: LoginData) {
+  setErr(null);
+
+  try {
+    const user= await mutateAsync(values); // returns User
+console.log(user)
+    if (user) {
+      // IMMEDIATELY redirect after successful login
+      navigate(from, { replace: true });
+      return;
+    }
+
+    setErr("Login succeeded but no user returned.");
+  } catch (error: any) {
+    const msg =
+      error?.response?.data?.message ??
+      error?.message ??
+      "Failed to log in. Please try again.";
+    setErr(msg);
+  }
+}
+
+
+
+  return (
+    <div className="">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email </FormLabel>
+                <FormControl>
+                  <Input placeholder="alex@gmail.com" {...field} type="email" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <FormControl>
+                  <Input placeholder="••••••••••" type="password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <Button
+            type="submit"
+            className="h-12 w-full rounded-full text-md cursor-pointer bg-gray-800 "
+            disabled={isPending}
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="animate-spin mr-2" /> Signing In...
+              </>
+            ) : (
+              "Sign In"
+            )}
+          </Button>
+        </form>
+      </Form>
+      {err && <p className="text-red-500 text-sm mt-2">{err}</p>}
+    </div>
+  );
+}
+
+export default LoginForm;

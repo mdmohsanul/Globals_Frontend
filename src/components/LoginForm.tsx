@@ -26,7 +26,7 @@ export function LoginForm() {
   const [err, setErr] = useState<string | null>(null);
 
   // react-query mutation hook
-  const { mutateAsync, isPending } = useLogin();
+  const { mutateAsync, isPending, error, isError } = useLogin();
 
   const form = useForm<LoginData>({
     resolver: zodResolver(loginSchema),
@@ -36,31 +36,31 @@ export function LoginForm() {
     },
   });
 
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/dashboard";
-console.log(from)
+  const from =
+    (location.state as { from?: { pathname: string } })?.from?.pathname ||
+    "/dashboard";
+
   async function onSubmit(values: LoginData) {
-  setErr(null);
+    setErr(null);
 
-  try {
-    const user= await mutateAsync(values); // returns User
-console.log(user)
-    if (user) {
-      // IMMEDIATELY redirect after successful login
-      navigate(from, { replace: true });
-      return;
+    try {
+      const user = await mutateAsync(values); // returns User
+
+      if (user) {
+        // IMMEDIATELY redirect after successful login
+        navigate(from, { replace: true });
+        return;
+      }
+
+      setErr("Login succeeded but no user returned.");
+    } catch (error: any) {
+      const msg =
+        error?.response?.data?.message ??
+        error?.message ??
+        "Failed to log in. Please try again.";
+      setErr(msg);
     }
-
-    setErr("Login succeeded but no user returned.");
-  } catch (error: any) {
-    const msg =
-      error?.response?.data?.message ??
-      error?.message ??
-      "Failed to log in. Please try again.";
-    setErr(msg);
   }
-}
-
-
 
   return (
     <div className="">
@@ -108,7 +108,9 @@ console.log(user)
           </Button>
         </form>
       </Form>
-      {err && <p className="text-red-500 text-sm mt-2">{err}</p>}
+      {isError && (
+        <p className="text-red-500 text-sm mt-2">{(error as Error).message}</p>
+      )}
     </div>
   );
 }

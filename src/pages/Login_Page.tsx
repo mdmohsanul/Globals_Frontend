@@ -10,7 +10,7 @@ import { useMe } from "@/features/auth/useMe";
 const Login_Page = () => {
  const navigate = useNavigate();
   const { data: user, isLoading } = useMe();
-console.log(user)
+
   useEffect(() => {
     if (!isLoading && user) {
       navigate("/dashboard", { replace: true });

@@ -9,7 +9,7 @@ export default function Dashboard() {
   const { data: activeForm, isLoading, isError } = useActiveForm();
 
   // 🔥 Handle Submit
-  function handleSubmit(data: any) {
+  async function handleSubmit(data: any) {
     if (!activeForm?._id) {
       console.error("No active form found!");
       return;
@@ -17,23 +17,22 @@ export default function Dashboard() {
 
     const formSchemaId = activeForm._id;
 
-    // Extract files
     const resumeFile = data.resume || null;
     const photoFile = data.photo || null;
 
-    // Add schema ID for backend
     const formDataValues = { ...data, formSchemaId };
 
-    // Remove files from encryption
     delete formDataValues.resume;
     delete formDataValues.photo;
 
-    submitMutation.mutateAsync({
+    // IMPORTANT: return the Promise
+    return submitMutation.mutateAsync({
       formDataValues,
       resumeFile,
       photoFile,
     });
   }
+
 
   return (
     <div className="max-w-3xl mx-auto">

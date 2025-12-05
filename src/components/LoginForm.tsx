@@ -23,7 +23,7 @@ import { useLogin } from "@/features/auth/useLogin";
 export function LoginForm() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [err, setErr] = useState<string | null>(null);
+
 
   // react-query mutation hook
   const { mutateAsync, isPending, error, isError } = useLogin();

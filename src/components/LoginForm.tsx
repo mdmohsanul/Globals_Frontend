@@ -14,16 +14,13 @@ import { Input } from "@/components/ui/input";
 import { loginSchema } from "@/utils/schema/login_schema";
 import type { LoginData } from "@/utils/schema/login_schema";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
+
 import { Loader2 } from "lucide-react";
 import { useLogin } from "@/features/auth/useLogin";
-
-
 
 export function LoginForm() {
   const navigate = useNavigate();
   const location = useLocation();
-
 
   // react-query mutation hook
   const { mutateAsync, isPending, error, isError } = useLogin();
@@ -41,24 +38,15 @@ export function LoginForm() {
     "/dashboard";
 
   async function onSubmit(values: LoginData) {
-    setErr(null);
-
     try {
-      const user = await mutateAsync(values); // returns User
+      const user = await mutateAsync(values);
 
       if (user) {
-        // IMMEDIATELY redirect after successful login
         navigate(from, { replace: true });
         return;
       }
-
-      setErr("Login succeeded but no user returned.");
-    } catch (error: any) {
-      const msg =
-        error?.response?.data?.message ??
-        error?.message ??
-        "Failed to log in. Please try again.";
-      setErr(msg);
+    } catch (e) {
+      console.log(e);
     }
   }
 
@@ -109,7 +97,9 @@ export function LoginForm() {
         </form>
       </Form>
       {isError && (
-        <p className="text-red-500 text-sm mt-2">{(error as Error).message}</p>
+        <p className="text-red-500 text-sm mt-2">
+          {(error as any)?.response?.data?.message || "Login failed"}
+        </p>
       )}
     </div>
   );

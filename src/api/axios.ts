@@ -1,7 +1,7 @@
 import axios, { AxiosError } from "axios";
 import type { AxiosRequestConfig } from "axios";
 
-const BASE_URL = "http://localhost:4000/api/v1";
+const BASE_URL = "https://globals-backend-i6cl.onrender.com";
 
 const api = axios.create({
   baseURL: BASE_URL,

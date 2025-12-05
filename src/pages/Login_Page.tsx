@@ -21,15 +21,13 @@ const Login_Page = () => {
   return (
     <>
       <div className="max-w-6xl mx-auto">
-        <p>Global</p>
+        <h1 className="text-3xl font-bold py-6 text-gray-700">Globals</h1>
 
         <div className="max-w-md mx-auto  border border-gray-200 rounded-md p-7  shadow-[0_3px_10px_rgb(0,0,0,0.2)] my-5">
           <h1 className="text-3xl text-gray-900 text-start pb-5 font-medium">
             Sign in
           </h1>
           <LoginForm />
-         
-          
         </div>
         <p className="text-center pb-5">
           <span>New to Globals? </span>

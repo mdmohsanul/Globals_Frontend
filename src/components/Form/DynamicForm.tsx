@@ -1,11 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { FormField } from "@/utils/types/form";
 import { formSchema } from "@/utils/schema/formSchema";
-
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -21,10 +20,11 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react"; // for spinner icon
 
 interface Props {
   fields: FormField[];
-  onSubmit: (data: Record<string, any>) => void;
+  onSubmit: (data: Record<string, any>) => Promise<any>;
 }
 
 const DynamicForm: React.FC<Props> = ({ fields, onSubmit }) => {
@@ -35,9 +35,21 @@ const DynamicForm: React.FC<Props> = ({ fields, onSubmit }) => {
     defaultValues: {},
   });
 
-  const { register, handleSubmit, setValue, getValues, control, formState } =
-    form;
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    getValues,
+    control,
+    formState,
+    reset,
+  } = form;
 
+  const { errors, isSubmitting, isSubmitSuccessful } = formState;
+
+  /* =========================================================
+      CONDITIONAL FIELD WATCHING
+  ========================================================== */
   const dependencyFields = fields
     .filter((f) => f.showWhen)
     .map((f) => f.showWhen!.field);
@@ -59,25 +71,57 @@ const DynamicForm: React.FC<Props> = ({ fields, onSubmit }) => {
     }
 
     if (field.showWhen.includes !== undefined) {
-      return Array.isArray(depValue) &&
-        depValue.includes(field.showWhen.includes);
+      return (
+        Array.isArray(depValue) && depValue.includes(field.showWhen.includes)
+      );
     }
 
     return true;
   };
 
+  /* =========================================================
+      SUCCESSFUL SUBMISSION → CLEAR FORM
+  ========================================================== */
+  useEffect(() => {
+    if (isSubmitSuccessful) {
+      reset(); // clears all fields
+    }
+  }, [isSubmitSuccessful, reset]);
+
+  /* =========================================================
+      SUBMIT HANDLER WRAPPER → CATCH SERVER ERRORS
+  ========================================================== */
+  async function handleFormSubmit(data: any) {
+    try {
+      await onSubmit(data); // you already return promise from mutation
+    } catch (err: any) {
+      console.log("Server error:", err);
+      form.setError("root.serverError", {
+        message:
+          err?.response?.data?.message || "Something went wrong. Try again.",
+      });
+    }
+  }
+
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={handleSubmit(handleFormSubmit)}
       className="space-y-8 bg-white p-8 rounded-xl shadow"
     >
+      {/* ---- SERVER ERROR BANNER ---- */}
+      {errors.root?.serverError?.message && (
+        <p className="p-3 rounded bg-red-100 text-red-700 text-sm">
+          {errors.root.serverError.message}
+        </p>
+      )}
+
+      {/* ---------------------- FORM FIELDS ---------------------- */}
       {fields.map((field) => {
         if (!shouldShow(field)) return null;
 
-        const error = formState.errors[field.name]?.message as string | undefined;
+        const error = errors[field.name]?.message as string | undefined;
 
         switch (field.type) {
-          /* ---------------- TEXT / EMAIL / NUMBER / DATE ---------------- */
           case "text":
           case "email":
           case "number":
@@ -94,28 +138,28 @@ const DynamicForm: React.FC<Props> = ({ fields, onSubmit }) => {
               </div>
             );
 
-          /* ---------------- TEXTAREA ---------------- */
           case "textarea":
             return (
               <div key={field.name} className="space-y-2">
                 <Label>{field.label}</Label>
-                <Textarea placeholder={field.placeholder} {...register(field.name)} />
+                <Textarea
+                  placeholder={field.placeholder}
+                  {...register(field.name)}
+                />
                 {error && <p className="text-sm text-red-600">{error}</p>}
               </div>
             );
 
-          /* ---------------- SELECT / DROPDOWN ---------------- */
           case "dropdown":
             return (
               <div key={field.name} className="space-y-2">
                 <Label>{field.label}</Label>
 
-                {/* Hidden input so RHF controls the value */}
                 <input type="hidden" {...register(field.name)} />
 
                 <Select
-                  onValueChange={(v) =>
-                    setValue(field.name, v, { shouldValidate: true })
+                  onValueChange={(value) =>
+                    setValue(field.name, value, { shouldValidate: true })
                   }
                 >
                   <SelectTrigger>
@@ -134,23 +178,21 @@ const DynamicForm: React.FC<Props> = ({ fields, onSubmit }) => {
               </div>
             );
 
-          /* ---------------- RADIO GROUP ---------------- */
           case "radio":
             return (
               <div key={field.name} className="space-y-2">
                 <Label>{field.label}</Label>
 
-                {/* Hidden input */}
                 <input type="hidden" {...register(field.name)} />
 
                 <RadioGroup
-                  onValueChange={(v) =>
-                    setValue(field.name, v, { shouldValidate: true })
+                  onValueChange={(value) =>
+                    setValue(field.name, value, { shouldValidate: true })
                   }
                 >
                   {field.options?.map((opt) => (
                     <div key={opt} className="flex items-center space-x-2">
-                      <RadioGroupItem value={opt} id={opt} />
+                      <RadioGroupItem id={opt} value={opt} />
                       <Label htmlFor={opt}>{opt}</Label>
                     </div>
                   ))}
@@ -160,13 +202,11 @@ const DynamicForm: React.FC<Props> = ({ fields, onSubmit }) => {
               </div>
             );
 
-          /* ---------------- CHECKBOX GROUP ---------------- */
           case "checkbox":
             return (
               <div key={field.name} className="space-y-2">
                 <Label>{field.label}</Label>
 
-                {/* Hidden input */}
                 <input type="hidden" {...register(field.name)} />
 
                 {field.options?.map((opt) => {
@@ -180,7 +220,6 @@ const DynamicForm: React.FC<Props> = ({ fields, onSubmit }) => {
                           const updated = checked
                             ? [...current, opt]
                             : current.filter((x) => x !== opt);
-
                           setValue(field.name, updated, {
                             shouldValidate: true,
                           });
@@ -195,7 +234,6 @@ const DynamicForm: React.FC<Props> = ({ fields, onSubmit }) => {
               </div>
             );
 
-          /* ---------------- FILE ---------------- */
           case "file":
             return (
               <div key={field.name} className="space-y-2">
@@ -219,7 +257,15 @@ const DynamicForm: React.FC<Props> = ({ fields, onSubmit }) => {
         }
       })}
 
-      <Button type="submit" className="w-full">Submit Application</Button>
+      {/* ---------------------- SUBMIT BUTTON ---------------------- */}
+      <Button
+        type="submit"
+        disabled={isSubmitting}
+        className="w-full flex items-center justify-center gap-2"
+      >
+        {isSubmitting && <Loader2 className="h-5 w-5 animate-spin" />}
+        {isSubmitting ? "Submitting..." : "Submit Application"}
+      </Button>
     </form>
   );
 };

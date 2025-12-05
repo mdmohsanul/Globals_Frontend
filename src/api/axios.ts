@@ -1,72 +1,70 @@
 import axios, { AxiosError } from "axios";
-import type{ AxiosRequestConfig } from "axios";
+import type { AxiosRequestConfig } from "axios";
 
-
-
-const BASE_URL = "http://localhost:4000/api/v1"
-   
-// const BASE_URL =
-//   process.env.NODE_ENV === "development"
-//     ? "http://localhost:4000/api/v1"
-//     : "";
-
-
+const BASE_URL = "http://localhost:4000/api/v1";
 
 const api = axios.create({
   baseURL: BASE_URL,
-  withCredentials: true, // needed for cookies
+  withCredentials: true,
 });
 
-// Flag to avoid infinite loops
 let isRefreshing = false;
-let failedRequestsQueue: {
+let failedQueue: {
   resolve: (value?: unknown) => void;
   reject: (reason?: unknown) => void;
 }[] = [];
 
+function processQueue(error: unknown, token: string | null) {
+  failedQueue.forEach((prom) => {
+    if (error) prom.reject(error);
+    else prom.resolve(token);
+  });
 
-// REQUEST INTERCEPTOR
-
-api.interceptors.request.use((config) => {
-  
-  return config;
-});
-
-
-// RESPONSE INTERCEPTOR
+  failedQueue = [];
+}
 
 api.interceptors.response.use(
-  (response) => response,
+  (res) => res,
 
   async (error: AxiosError) => {
-    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as AxiosRequestConfig & {
+      _retry?: boolean;
+    };
 
+    // 401 — try refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      // If already refreshing → queue requests
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
-          failedRequestsQueue.push({ resolve, reject });
+          failedQueue.push({ resolve, reject });
         })
           .then(() => api(originalRequest))
           .catch((err) => Promise.reject(err));
       }
 
-      // Otherwise, refresh token now
       isRefreshing = true;
 
       try {
-        await api.post("/auth/refresh"); // backend sets new cookies
+        // Call refresh API
+        const refreshResponse = await api.post("/auth/refresh");
 
-        // Retry queued requests
-        failedRequestsQueue.forEach((req) => req.resolve());
-        failedRequestsQueue = [];
+        // Extract new access token if backend returns it
+        const newAccessToken = refreshResponse.data?.data?.accessToken;
+
+        // Set new access token in headers
+        if (newAccessToken) {
+          api.defaults.headers.common[
+            "Authorization"
+          ] = `Bearer ${newAccessToken}`;
+        }
+
+        processQueue(null, newAccessToken);
 
         return api(originalRequest);
       } catch (refreshError) {
-        failedRequestsQueue.forEach((req) => req.reject(refreshError));
-        failedRequestsQueue = [];
+        processQueue(refreshError, null);
+
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

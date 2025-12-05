@@ -8,6 +8,8 @@ import LogIn from "./pages/Login_Page";
 import SignUp from "./pages/Signup_Page";
 
 import Dashboard from "./pages/Dashboard";
+import SubmissionList from "./pages/Submission";
+import DashboardWrapper from "./pages/DashboardWrapper";
 
 const router = createBrowserRouter([
   {
@@ -22,9 +24,13 @@ const router = createBrowserRouter([
         path: "dashboard",
         element: (
           <ProtectedRoute>
-            <Dashboard />
+            <DashboardWrapper />
           </ProtectedRoute>
         ),
+        children: [
+          { index: true, element: <Dashboard /> },
+          { path: "submission", element: <SubmissionList /> },
+        ],
       },
     ],
   },

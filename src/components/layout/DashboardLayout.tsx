@@ -1,3 +1,6 @@
+import { Outlet } from "react-router-dom";
+
+
 
 import Navbar from "./Navbar";
 
@@ -8,7 +11,6 @@ interface Props {
 }
 
 export default function DashboardLayout({
-  children,
   onLogout,
   isLogoutLoading,
 }: Props) {
@@ -19,9 +21,9 @@ export default function DashboardLayout({
       <div className="flex-1 flex flex-col">
         <Navbar onLogout={onLogout} isLoading={isLogoutLoading} />
 
-        <main className="p-6 ">
-          {children}
-        </main>
+       <main className="p-6">
+  <Outlet />
+</main>
       </div>
     </div>
   );

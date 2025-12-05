@@ -1,14 +1,17 @@
 import api from "@/api/axios";
-import type { SubmissionType } from "@/utils/types/submission";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import type { PaginatedSubmissionResponse } from "@/utils/types/submission";
 
-export function useMySubmissions() {
-  return useQuery<SubmissionType[]>({
-    queryKey: ["my-submissions"],
+export function useMySubmissions(page: number = 1, limit: number = 5) {
+  return useQuery<PaginatedSubmissionResponse>({
+    queryKey: ["my-submissions", page, limit],
     queryFn: async () => {
-      const res = await api.get("/submission/allSubmission");
-
-      return res.data.data; // ApiResponse format
+      const res = await api.get(
+        `/submission/allSubmission?page=${page}&limit=${limit}`
+      );
+      console.log(res);
+      return res.data.data as PaginatedSubmissionResponse;
     },
+    placeholderData: keepPreviousData,
   });
 }

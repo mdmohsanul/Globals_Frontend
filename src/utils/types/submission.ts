@@ -9,3 +9,10 @@ export interface SubmissionType {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface PaginatedSubmissionResponse {
+  submissions: SubmissionType[];
+  totalSubmissions: number;
+  totalPages: number;
+  currentPage: number;
+}
